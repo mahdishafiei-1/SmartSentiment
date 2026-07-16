@@ -1,5 +1,11 @@
-from playwright.sync_api import sync_playwright
+import os
 import time
+from dotenv import load_dotenv
+from playwright.sync_api import sync_playwright
+
+load_dotenv()
+
+chrome_path = os.getenv("CHROME_EXECUTABLE_PATH")
 
 url_list = [
     "https://www.digikala.com/product/dkp-21679945/",
@@ -16,8 +22,8 @@ url_list = [
 
 def extract_and_print_comments(page, page_number):
     comments = page.locator("#commentSection article.br-list-vertical-no-padding-200").all()    
-    print(f"\nPage: {page_number} | Comments count: {len(comments)}")
-    print("=" * 50)
+    print(f"|Page: {page_number} | Comments count: {len(comments)}|")
+    print("=" * 100)
 
     for comment in comments:
         try:
@@ -44,63 +50,63 @@ def extract_and_print_comments(page, page_number):
             except Exception:
                 star = 0
 
-            print(f"Name: {name} | Star: {star}")
-            print(f"Is buyer: {is_buyer} | Is expert: {is_expert}")
+            print(f"Name: {name} | Star: {star} | Is buyer: {is_buyer} | Is expert: {is_expert}")
             print(f"Text: {text}")
-            print("-" * 50)
+            print("-" * 100)
         except Exception as e:
             pass
 
-with sync_playwright() as p:
-    browser = p.chromium.launch(headless=False, executable_path=r"C:\Program Files\Google\Chrome\Application\chrome.exe")
-    page = browser.new_page()
-    
-    for index, url in enumerate(url_list):
-        print(f"\n-- link: {index + 1} --\n-- url: {url} --")
-        try:
-            page.goto(url)
-            page.wait_for_timeout(4000)
+if __name__ == "__main__":
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=False, executable_path=chrome_path)
+        page = browser.new_page()
+        
+        for index, url in enumerate(url_list):
+            print(f"\n-- link: {index + 1} | url: {url} --")
+            try:
+                page.goto(url)
+                page.wait_for_timeout(4000)
 
-            for scroll_pos in range(2000, 4000, 400):
-                page.evaluate(f"window.scrollTo(0, {scroll_pos});")
-                page.wait_for_timeout(1000)
+                for scroll_pos in range(2000, 4000, 400):
+                    page.evaluate(f"window.scrollTo(0, {scroll_pos});")
+                    page.wait_for_timeout(1000)
 
-            comments_tab = page.locator("li[data-cro-id='pdp-scroll-menu']").filter(has_text="دیدگاه‌ها").first
-            if comments_tab.is_visible():
-                comments_tab.click(force=True)
-                print("Clicked on Comments Tab.")
-                page.wait_for_timeout(3000)
+                comments_tab = page.locator("li[data-cro-id='pdp-scroll-menu']").filter(has_text="دیدگاه‌ها").first
+                if comments_tab.is_visible():
+                    comments_tab.click(force=True)
+                    print("-- Clicked on Comments Tab -- ")
+                    page.wait_for_timeout(3000)
 
-            page.evaluate("window.scrollBy(0, 800);")
-            page.wait_for_timeout(2000)
+                page.evaluate("window.scrollBy(0, 800);")
+                page.wait_for_timeout(2000)
 
-            more_comments_btn = page.locator("p.text-secondary-500:has-text('دیدگاه دیگر')").first
-            if more_comments_btn.is_visible():
-                try:
-                    more_comments_btn.click(force=True, timeout=5000)
-                    print("Successfully => More Comments")
-                    page.wait_for_timeout(4000)
-                except Exception:
-                    print("Failed => More Comments")
+                more_comments_btn = page.locator("p.text-secondary-500:has-text('دیدگاه دیگر')").first
+                if more_comments_btn.is_visible():
+                    try:
+                        more_comments_btn.click(force=True, timeout=5000)
+                        print("-- Successfully => More Comments --\n" + "=" * 100)
+                        page.wait_for_timeout(4000)
+                    except Exception:
+                        print("-- Failed => More Comments --")
 
-            page_counter = 1
-            while True:
-                extract_and_print_comments(page, page_counter)
-                
-                next_button = page.locator("span.text-body2-strong").filter(has_text="بعدی").first
-                
-                if next_button.is_visible():
-                    print(f"\n-- Go to page {page_counter + 1} --")
-                    next_button.click(force=True)
+                page_counter = 1
+                while True:
+                    extract_and_print_comments(page, page_counter)
                     
-                    page_counter += 1
-                    page.wait_for_timeout(4000)
-                else:
-                    print("\nScraping finished.")
-                    break
-        except Exception as url_error:
-            print(f"Error URL: {url_error}")
-            print("Move to the next URL.")
-            continue
+                    next_button = page.locator("span.text-body2-strong").filter(has_text="بعدی").first
+                    
+                    if next_button.is_visible():
+                        print(f"\n-- Go to page {page_counter + 1} --")
+                        next_button.click(force=True)
+                        
+                        page_counter += 1
+                        page.wait_for_timeout(4000)
+                    else:
+                        print("\n-- Scraping finished --")
+                        break
+            except Exception as url_error:
+                print(f"Error URL: {url_error}")
+                print("-- Move to the next URL --")
+                continue
 
-    browser.close()
+        browser.close()
