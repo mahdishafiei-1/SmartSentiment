@@ -1,6 +1,6 @@
 import os
 from sqlalchemy import create_engine, Column, Integer, String, Text
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -24,5 +24,25 @@ class Reviews(Base):
     star = Column(Integer)
     is_buyer = Column(Integer)
     is_expert = Column(Integer)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+def add_new_review(db: Session, user_name: str, text: str, star: int, is_buyer: int = 0, is_expert: int = 0):
+    new_review = Reviews(
+        user_name=user_name,
+        text=text,
+        star=star,
+        is_buyer=is_buyer,
+        is_expert=is_expert
+    )
+    db.add(new_review)
+    db.commit()
+    db.refresh(new_review)
+    return new_review
 
 Base.metadata.create_all(bind=engine)
