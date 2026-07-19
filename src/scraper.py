@@ -2,6 +2,7 @@ import os
 import time
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
+from database import get_db, add_new_review
 
 load_dotenv()
 
@@ -20,11 +21,13 @@ url_list = [
     "https://www.digikala.com/product/dkp-17918956/"
 ]
 
-def extract_and_print_comments(page, page_number):
+def extract_and_save_comments(page, page_number):
     comments = page.locator("#commentSection article.br-list-vertical-no-padding-200").all()    
     print(f"|Page: {page_number} | Comments count: {len(comments)}|")
     print("=" * 100)
 
+    db_session = next(get_db())
+    
     for comment in comments:
         try:
             more_text_btn = comment.locator("span:has-text('ادامه')").first
@@ -50,15 +53,17 @@ def extract_and_print_comments(page, page_number):
             except Exception:
                 star = 0
 
-            print(f"Name: {name} | Star: {star} | Is buyer: {is_buyer} | Is expert: {is_expert}")
-            print(f"Text: {text}")
+            add_new_review(db_session, name, text, star, is_buyer, is_expert)
+            print("review added to database")
             print("-" * 100)
         except Exception as e:
             pass
 
+    db_session.close()
+
 if __name__ == "__main__":
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False, executable_path=chrome_path)
+        browser = p.chromium.launch(headless=True, executable_path=chrome_path)
         page = browser.new_page()
         
         for index, url in enumerate(url_list):
@@ -91,7 +96,7 @@ if __name__ == "__main__":
 
                 page_counter = 1
                 while True:
-                    extract_and_print_comments(page, page_counter)
+                    extract_and_save_comments(page, page_counter)
                     
                     next_button = page.locator("span.text-body2-strong").filter(has_text="بعدی").first
                     
