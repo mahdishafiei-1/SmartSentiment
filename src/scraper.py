@@ -1,5 +1,6 @@
 import os
 import time
+import re
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 from database import get_db, add_new_review
@@ -12,13 +13,15 @@ url_list = [
     "https://www.digikala.com/product/dkp-21679945/",
     "https://www.digikala.com/product/dkp-340776/",
     "https://www.digikala.com/product/dkp-5715766/", 
-    "https://www.digikala.com/product/dkp-223806", 
-    "https://www.digikala.com/product/dkp-17918956",
-    "https://www.digikala.com/product/dkp-6785396", 
-    "https://www.digikala.com/product/dkp-7192610", 
-    "https://www.digikala.com/product/dkp-2067210",
-    "https://www.digikala.com/product/dkp-3827346", 
-    "https://www.digikala.com/product/dkp-17918956/"
+    "https://www.digikala.com/product/dkp-223806/", 
+    "https://www.digikala.com/product/dkp-17918956/",
+    "https://www.digikala.com/product/dkp-6785396/", 
+    "https://www.digikala.com/product/dkp-7192610/", 
+    "https://www.digikala.com/product/dkp-2067210/",
+    "https://www.digikala.com/product/dkp-3827346/", 
+    "https://www.digikala.com/product/dkp-17918956/",
+    "https://www.digikala.com/product/dkp-2554610/",
+    "https://www.digikala.com/product/dkp-493336/"
 ]
 
 def extract_and_save_comments(page, page_number):
@@ -48,9 +51,20 @@ def extract_and_save_comments(page, page_number):
             is_expert = 1 if expert_locator.is_visible() else 0
 
             try:
-                filled_stars = comment.locator("img[src*='star-fill']").all()
-                star = len(filled_stars)
-            except Exception:
+                star_container = comment.locator("div.absolute.inset-0.overflow-hidden").first
+                
+                if star_container.is_visible(timeout=1000):
+                    style_attr = star_container.get_attribute("style")
+
+                    match = re.search(r"width:\s*(\d+)%", style_attr)
+                    if match:
+                        percentage = int(match.group(1))
+                        star = round(percentage / 20)
+                    else:
+                        star = 0
+                else:
+                    star = 0
+            except Exception as e:
                 star = 0
 
             add_new_review(db_session, name, text, star, is_buyer, is_expert)
@@ -105,6 +119,8 @@ if __name__ == "__main__":
                         next_button.click(force=True)
                         
                         page_counter += 1
+                        if page_counter == 51:
+                            break
                         page.wait_for_timeout(4000)
                     else:
                         print("\n-- Scraping finished --")
